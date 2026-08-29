@@ -57,36 +57,62 @@ export function LatitudeLoader(props: LoaderProps) {
   );
 }
 
-/* ── Waveform — breathing circular EQ (audio) ────────────────────────── */
+/* ── Waveform — premium circular EQ halo (audio) ──────────────────────────
+ * Upgraded after circleloaders.dominikakissi.com: two counter-rotating
+ * dashed orbit arcs, a rippling outer ring and a breathing spectrum core —
+ * reads as a tiny vinyl turntable spinning up. */
 export function WaveformLoader(props: LoaderProps) {
   const uid = useId().replace(/[:]/g, "");
   const lens = [10, 16, 22, 27, 30, 27, 22, 16];
   return (
     <LoaderFrame {...props}>
       <style>{`
+        .wf-${uid}-arc { transform-origin: 32px 32px; animation: wf-${uid}-spin 2.4s cubic-bezier(.45,.05,.55,.95) infinite; }
+        .wf-${uid}-arc2 { transform-origin: 32px 32px; animation: wf-${uid}-spin 3.4s cubic-bezier(.45,.05,.55,.95) reverse infinite; }
+        @keyframes wf-${uid}-spin { to { transform: rotate(360deg); } }
         .wf-${uid} line { transform-origin: 32px 32px; animation: wf-${uid}-eq 1.15s ease-in-out infinite; }
         @keyframes wf-${uid}-eq {
           0%, 100% { transform: scale(1); opacity: .55; }
           35%      { transform: scale(1.22); opacity: 1; }
         }
-        @media (prefers-reduced-motion: reduce) { .wf-${uid} line { animation: none; opacity: .8; } }
+        .wf-${uid}-ripple { transform-origin: 32px 32px; animation: wf-${uid}-pulse 2.2s ease-out infinite; }
+        @keyframes wf-${uid}-pulse {
+          0%   { transform: scale(.55); opacity: .55; }
+          70%  { transform: scale(1); opacity: 0; }
+          100% { transform: scale(1); opacity: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .wf-${uid}-arc, .wf-${uid}-arc2, .wf-${uid}-ripple { animation: none; opacity: .6; }
+          .wf-${uid} line { animation: none; opacity: .8; }
+        }
       `}</style>
+      {/* rippling halo */}
+      <circle className={`wf-${uid}-ripple`} cx="32" cy="32" r="30" stroke="currentColor" strokeWidth="1" fill="none" />
       <circle cx="32" cy="32" r="30" stroke="currentColor" strokeOpacity="0.14" strokeWidth="1" />
+      {/* counter-rotating dashed arcs */}
+      <g className={`wf-${uid}-arc`}>
+        <circle cx="32" cy="32" r="24" stroke="currentColor" strokeWidth="2" strokeDasharray="18 9" strokeLinecap="round" fill="none" />
+      </g>
+      <g className={`wf-${uid}-arc2`}>
+        <circle cx="32" cy="32" r="18" stroke="currentColor" strokeOpacity="0.5" strokeWidth="1.5" strokeDasharray="6 6" strokeLinecap="round" fill="none" />
+      </g>
+      {/* spectrum core */}
       <g className={`wf-${uid}`} stroke="currentColor" strokeWidth="3" strokeLinecap="round">
         {lens.map((len, i) => {
           const rad = ((i / lens.length) * 360 - 90) * (Math.PI / 180);
-          const r1 = 34 - len;
+          const r1 = 12 - len * 0.12;
+          const r2 = 14 - len * 0.12 + len * 0.16;
           return (
             <line
               key={i}
               x1={32 + Math.cos(rad) * r1} y1={32 + Math.sin(rad) * r1}
-              x2={32 + Math.cos(rad) * 30} y2={32 + Math.sin(rad) * 30}
+              x2={32 + Math.cos(rad) * r2} y2={32 + Math.sin(rad) * r2}
               style={{ animationDelay: `${i * 0.09}s` }}
             />
           );
         })}
       </g>
-      <circle cx="32" cy="32" r="3.2" fill="currentColor" />
+      <circle cx="32" cy="32" r="2" fill="currentColor" />
     </LoaderFrame>
   );
 }

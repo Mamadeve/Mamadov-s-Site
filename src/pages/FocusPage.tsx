@@ -55,6 +55,15 @@ const PRESETS: Record<Mode, number[]> = {
 
 const DURATIONS_KEY = "mamado.focus.durations";
 
+/** H:MM:SS past one hour, otherwise M:SS — tabular digits, zero jitter. */
+function formatTimer(total: number): string {
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 type Durations = Record<Mode, number>; // minutes
 
 function loadDurations(): Durations {
@@ -191,11 +200,10 @@ export default function FocusPage() {
     void completePhase();
   };
 
-  const minutes = Math.floor(secondsLeft / 60);
-  const secs = secondsLeft % 60;
   const progress = duration > 0 ? (duration - secondsLeft) / duration : 0;
   const meta = MODE_META[mode];
   const ModeIcon = meta.icon;
+  const timerText = formatTimer(secondsLeft);
 
   return (
     <motion.div
@@ -307,11 +315,21 @@ export default function FocusPage() {
                 style={{ filter: "drop-shadow(0 0 6px var(--glow))" }}
               />
             </svg>
-            <div className="dot-grid flex flex-col items-center justify-center" style={{ width: 150, height: 150, borderRadius: "50%" }}>
-              <ModeIcon size={13} className="mb-1.5 text-[var(--txt-dim)]" />
-              <span className="meta">{MODE_LABEL[mode]}</span>
-              <span className="display mt-1 text-5xl tabular-nums text-[var(--txt)]">
-                {minutes}:{secs.toString().padStart(2, "0")}
+            <div className="dot-grid absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ width: 150, height: 150 }}>
+              {/* mode chip — anchored to the top of the disc */}
+              <span className="absolute left-1/2 top-[15%] flex -translate-x-1/2 items-center gap-1.5">
+                <ModeIcon size={11} className="text-[var(--txt-dim)]" />
+                <span className="meta">{MODE_LABEL[mode]}</span>
+              </span>
+              {/* time — EXACTLY at the visual center of the circle (absolute
+                  centering is immune to font metrics & responsive scaling) */}
+              <span
+                className={cn(
+                  "display absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center leading-none tabular-nums text-[var(--txt)]",
+                  timerText.length > 5 ? "text-[2rem]" : "text-5xl",
+                )}
+              >
+                {timerText}
               </span>
             </div>
             {running ? (

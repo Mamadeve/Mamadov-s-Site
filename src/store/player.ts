@@ -51,6 +51,7 @@ interface PlayerState {
   toggleFavorite: (trackId: string) => void;
   setFavorites: (ids: string[]) => void;
   removeFromQueue: (trackId: string) => void;
+  close: () => void;
 }
 
 /** Module-level audio element for the "direct" engine */
@@ -58,6 +59,20 @@ export const audioEl: HTMLAudioElement =
   typeof Audio !== "undefined" ? new Audio() : ({} as HTMLAudioElement);
 
 let lastRecordedId: string | null = null;
+
+/**
+ * Perceptual loudness curve.
+ *
+ * Raw Web Audio gain is linear, which human ears perceive as flat —
+ * 75%→100% sounds identical. Applying a power curve (v^1.8) makes the
+ * slider feel like a real iOS volume control:
+ *   0% → silent · 25% → clearly low · 50% → medium
+ *   75% → clearly loud · 100% → true maximum (gain = 1.0)
+ */
+const VOLUME_CURVE = 1.8;
+function toGain(v: number): number {
+  return Math.pow(Math.min(1, Math.max(0, v)), VOLUME_CURVE);
+}
 
 function orderedQueue(queue: TrackWithMeta[], fromIndex: number, shuffle: boolean): TrackWithMeta[] {
   if (!shuffle) return queue;
@@ -121,7 +136,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     set({ playbackState: "loading", playbackError: null, progress: 0, duration: track.duration_seconds ?? 0 });
     if (audioEl.src !== track.source_url) audioEl.src = track.source_url;
     else audioEl.currentTime = 0;
-    audioEl.volume = get().muted ? 0 : get().volume;
+    audioEl.volume = get().muted ? 0 : toGain(get().volume);
     audioEl.play().catch((e: unknown) => {
       const name = e instanceof Error ? e.name : "";
       if (name === "NotAllowedError") {
@@ -277,14 +292,30 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
 
     setVolume: (v) => {
       const vol = Math.min(1, Math.max(0, v));
-      audioEl.volume = get().muted ? 0 : vol;
+      audioEl.volume = get().muted ? 0 : toGain(vol);
       set({ volume: vol });
     },
 
     toggleMute: () => {
       const muted = !get().muted;
-      audioEl.volume = muted ? 0 : get().volume;
+      audioEl.volume = muted ? 0 : toGain(get().volume);
       set({ muted });
+    },
+
+    /** Fully dismiss the player (mini X button): stop audio, clear state. */
+    close: () => {
+      if (audioEl.pause) audioEl.pause();
+      audioEl.removeAttribute("src");
+      useUIStore.getState().setPlayerExpanded(false);
+      set({
+        queue: [],
+        currentId: null,
+        isPlaying: false,
+        playbackState: "idle",
+        playbackError: null,
+        progress: 0,
+        duration: 0,
+      });
     },
 
     toggleShuffle: () => {

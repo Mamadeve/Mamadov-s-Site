@@ -233,3 +233,100 @@ export async function deleteAudioObject(path: string): Promise<void> {
   await supabase.storage.from("music").remove([path]).then(() => undefined, () => undefined);
 }
 
+/* ── Cover image upload (stored in the same public `music` bucket) ── */
+
+const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "avif", "gif"] as const;
+
+export function isImageFile(file: File): boolean {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return (IMAGE_EXTENSIONS as readonly string[]).includes(ext) || file.type.startsWith("image/");
+}
+
+/**
+ * Upload a cover image for a track. Uses the same XHR progress pattern as
+ * `uploadAudioFile`; credentials stay server-side. Nothing sensitive is
+ * exposed to the UI.
+ */
+export function uploadCoverImage(
+  file: File,
+  userId: string,
+  onProgress?: (pct: number) => void,
+): Promise<UploadResult> {
+  return new Promise((resolve, reject) => {
+    void (async () => {
+      try {
+        if (!isImageFile(file)) {
+          reject(new Error("Unsupported image — use JPG, PNG, WEBP or AVIF."));
+          return;
+        }
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (!token) {
+          reject(new Error("Not signed in."));
+          return;
+        }
+        const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+        const path = `${userId}/cover_${Date.now()}_${safeName}`;
+        const base = supabaseUrl;
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `${base}/storage/v1/object/music/${path}`);
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+        xhr.setRequestHeader("apikey", supabaseAnonKey);
+        xhr.setRequestHeader("x-upsert", "true");
+        xhr.setRequestHeader("Content-Type", file.type || "image/jpeg");
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve({
+              path,
+              publicUrl: `${base}/storage/v1/object/public/music/${path}`,
+            });
+          } else {
+            let msg = `Upload failed (HTTP ${xhr.status}).`;
+            try {
+              const body = JSON.parse(xhr.responseText) as { message?: string };
+              if (body.message) msg = body.message;
+            } catch {
+              /* keep default */
+            }
+            reject(new Error(msg));
+          }
+        };
+        xhr.onerror = () => reject(new Error("Network error during upload."));
+        xhr.send(file);
+      } catch (e) {
+        reject(e instanceof Error ? e : new Error("Upload failed."));
+      }
+    })();
+  });
+}
+
+/* ── Upload limits & review workflow ────────────────────────── */
+
+/**
+ * Count direct audio uploads the user has already added (the DB enforces a
+ * hard limit of 1 uploaded file per non-admin account; links are unlimited).
+ * Never rejects.
+ */
+export async function countUserDirectUploads(userId: string): Promise<number> {
+  try {
+    const { count, error } = await supabase
+      .from("music_tracks")
+      .select("id", { count: "exact", head: true })
+      .eq("added_by", userId)
+      .eq("source", "direct");
+    if (error) return 0;
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Admin-only: approve / reject a pending user-submitted track. */
+export async function setTrackStatus(id: string, status: "pending" | "approved" | "rejected"): Promise<void> {
+  const { error } = await supabase.from("music_tracks").update({ status }).eq("id", id);
+  if (error) throw error;
+}
+

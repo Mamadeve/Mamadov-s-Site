@@ -18,25 +18,45 @@ import {
   scEmbedUrl,
   type ResolvedMetadata as SoundcloudMeta,
 } from "./soundcloud";
+import {
+  isAppleMusicUrl,
+  fetchAppleMusicMetadata,
+  appleMusicEmbedUrl,
+  appleMusicEmbedHeight,
+  type ResolvedMetadata as AppleMusicMeta,
+} from "./applemusic";
 
-export type { SpotifyMeta, SoundcloudMeta };
-export { spotifyEmbedUrl, spotifyEmbedHeight, scEmbedUrl };
+export type { SpotifyMeta, SoundcloudMeta, AppleMusicMeta };
+export { spotifyEmbedUrl, spotifyEmbedHeight, scEmbedUrl, appleMusicEmbedUrl, appleMusicEmbedHeight };
 
 export function detectSource(url: string): MusicSource | null {
   if (isSpotifyUrl(url)) return "spotify";
   if (isSoundcloudUrl(url)) return "soundcloud";
+  if (isAppleMusicUrl(url)) return "applemusic";
   if (isValidUrl(url)) return "direct";
   return null;
 }
 
-export async function resolveMetadata(
-  url: string,
-): Promise<Partial<SpotifyMeta & SoundcloudMeta> & { provider: MusicSource }> {
+/** Unified resolved metadata shape (provider-agnostic). */
+export interface ResolvedMeta {
+  title?: string;
+  artist?: string;
+  album?: string;
+  coverUrl?: string;
+  durationSeconds?: number | null;
+  embedUrl?: string;
+  provider: MusicSource;
+}
+
+export async function resolveMetadata(url: string): Promise<ResolvedMeta> {
   if (isSpotifyUrl(url)) {
-    return { ...(await fetchSpotifyMetadata(url)), provider: "spotify" };
+    return { ...(await fetchSpotifyMetadata(url)), provider: "spotify" } as ResolvedMeta;
   }
   if (isSoundcloudUrl(url)) {
-    return { ...(await fetchSoundcloudMetadata(url)), provider: "soundcloud" };
+    return { ...(await fetchSoundcloudMetadata(url)), provider: "soundcloud" } as ResolvedMeta;
+  }
+  if (isAppleMusicUrl(url)) {
+    return { ...(await fetchAppleMusicMetadata(url)), provider: "applemusic" } as ResolvedMeta;
   }
   return { provider: "direct" };
 }

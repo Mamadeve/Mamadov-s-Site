@@ -9,7 +9,7 @@ import { listTasks, updateTask } from "@/services/tasks";
 import { useAuthStore, useToast } from "@/store";
 import { dbErrorMessage } from "@/lib/supabase";
 import { useDebounce } from "@/hooks/useMisc";
-import { useRealtime } from "@/hooks/useRealtime";
+import { useDataSync } from "@/hooks/useDataSync";
 import { TASK_PRIORITY_META, TASK_STATUS_META } from "@/config/constants";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskModal } from "@/components/tasks/TaskModal";
@@ -136,8 +136,8 @@ export default function TasksPage() {
     }
   };
 
-  /* realtime sync — refresh when any user changes tasks */
-  useRealtime("tasks", () => void load());
+  /* data sync — realtime from other users + instant local updates (no refresh) */
+  useDataSync("tasks", () => void load());
 
   return (
     <div className="animate-rise">

@@ -29,6 +29,13 @@ const STATUS_COLOR: Record<string, string> = {
   DISABLED: "var(--txt-faint)",
 };
 
+const PROVIDER_LABEL: Record<string, string> = {
+  spotify: "Spotify",
+  soundcloud: "SoundCloud",
+  applemusic: "Apple Music",
+  jamendo: "Jamendo",
+};
+
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <button
@@ -193,7 +200,7 @@ export function IntegrationsCenter() {
       void saveIntegrations(next).catch(() => undefined);
       return next;
     });
-    if (ok) toast({ title: `${id === "spotify" ? "Spotify" : "SoundCloud"} connection OK`, variant: "success" });
+    if (ok) toast({ title: `${PROVIDER_LABEL[id] ?? id} connection OK`, variant: "success" });
     else toast({ title: "Connection failed", description: error, variant: "error" });
   };
 

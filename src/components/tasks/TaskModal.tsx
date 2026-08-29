@@ -9,6 +9,7 @@ import { Button, Input, Select, Textarea, FieldLabel } from "@/components/ui/pri
 import { ErrorNote } from "@/components/ui/bits";
 import { useAuthStore, useToast } from "@/store";
 import { useUIStore } from "@/store/ui";
+import { notifyDataChange } from "@/hooks/useDataSync";
 import { createTask, updateTask, deleteTask } from "@/services/tasks";
 import { listCategories } from "@/services/categories";
 import { listUsers } from "@/services/admin";
@@ -117,6 +118,8 @@ export function TaskModal({
         await createTask(payload, profile.id);
         toast({ title: "Task created", variant: "success" });
       }
+      /* instant global sync — no manual refresh needed */
+      notifyDataChange("tasks");
       onClose();
     } catch (e) {
       setError(dbErrorMessage(e as { message: string }));
@@ -131,6 +134,7 @@ export function TaskModal({
     try {
       await deleteTask(editing.id);
       toast({ title: "Task deleted" });
+      notifyDataChange("tasks");
       onClose();
     } catch (e) {
       setError(dbErrorMessage(e as { message: string }));
@@ -144,6 +148,21 @@ export function TaskModal({
       onClose={onClose}
       title={isEdit ? "EDIT TASK" : "NEW TASK"}
       subtitle={isEdit ? `ID ${editing?.id.slice(0, 8)}` : "DEFINE THE OBJECTIVE"}
+      footer={
+        <div className="flex items-center gap-2">
+          <Button variant="primary" className="flex-1" loading={saving} disabled={!canSubmit} onClick={() => void submit()}>
+            {isEdit ? "Save changes" : "Create task"}
+          </Button>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          {isEdit ? (
+            <Button variant="danger" loading={deleting} onClick={() => void remove()}>
+              Delete
+            </Button>
+          ) : null}
+        </div>
+      }
     >
       <div className="flex flex-col gap-4">
         <div>
@@ -291,20 +310,6 @@ export function TaskModal({
         ) : null}
 
         {error ? <ErrorNote message={error} /> : null}
-
-        <div className="mt-1 flex items-center gap-2">
-          <Button variant="primary" className="flex-1" loading={saving} disabled={!canSubmit} onClick={() => void submit()}>
-            {isEdit ? "Save changes" : "Create task"}
-          </Button>
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          {isEdit ? (
-            <Button variant="danger" loading={deleting} onClick={() => void remove()}>
-              Delete
-            </Button>
-          ) : null}
-        </div>
       </div>
     </Modal>
   );

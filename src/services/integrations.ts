@@ -11,7 +11,7 @@
  */
 import { supabase } from "@/lib/supabase";
 
-export type ProviderId = "spotify" | "soundcloud";
+export type ProviderId = "spotify" | "soundcloud" | "applemusic" | "jamendo";
 
 export interface ProviderConfig {
   id: ProviderId;
@@ -40,6 +40,8 @@ const PUBLIC_KEY = "public.integrations";
 const DOCS = {
   spotify: "https://developer.spotify.com/documentation/web-api",
   soundcloud: "https://developers.soundcloud.com/docs/api",
+  applemusic: "https://developer.apple.com/documentation/applemusicapi",
+  jamendo: "https://devportal.jamendo.com",
 } as const;
 
 export function defaultIntegrations(): IntegrationsMap {
@@ -58,6 +60,22 @@ export function defaultIntegrations(): IntegrationsMap {
       redirectUri: `${window.location.origin}/settings`,
       playbackEnabled: true, searchEnabled: true, metadataEnabled: true,
       priority: 2, docsUrl: DOCS.soundcloud,
+      lastTestAt: null, lastTestStatus: null, lastTestError: null,
+    },
+    applemusic: {
+      id: "applemusic", label: "Apple Music", enabled: false,
+      clientId: "", clientSecret: "",
+      redirectUri: `${window.location.origin}/settings`,
+      playbackEnabled: true, searchEnabled: true, metadataEnabled: true,
+      priority: 3, docsUrl: DOCS.applemusic,
+      lastTestAt: null, lastTestStatus: null, lastTestError: null,
+    },
+    jamendo: {
+      id: "jamendo", label: "Jamendo", enabled: false,
+      clientId: "", clientSecret: "",
+      redirectUri: `${window.location.origin}/settings`,
+      playbackEnabled: true, searchEnabled: true, metadataEnabled: true,
+      priority: 4, docsUrl: DOCS.jamendo,
       lastTestAt: null, lastTestStatus: null, lastTestError: null,
     },
   };
@@ -148,11 +166,31 @@ export async function testConnection(p: ProviderConfig): Promise<{ ok: boolean; 
       return { ok: false, error: body.error_description ?? body.error ?? `HTTP ${res.status}` };
     }
     // soundcloud — probe the official oEmbed endpoint
-    const res = await fetch(
-      `https://soundcloud.com/oembed?format=json&url=${encodeURIComponent("https://soundcloud.com/forss/flickermood")}`,
-    );
-    if (res.ok) return { ok: true };
-    return { ok: false, error: `HTTP ${res.status}` };
+    if (p.id === "soundcloud") {
+      const res = await fetch(
+        `https://soundcloud.com/oembed?format=json&url=${encodeURIComponent("https://soundcloud.com/forss/flickermood")}`,
+      );
+      if (res.ok) return { ok: true };
+      return { ok: false, error: `HTTP ${res.status}` };
+    }
+    // apple music — official iTunes Lookup API (no key) reachability probe
+    if (p.id === "applemusic") {
+      const res = await fetch("https://itunes.apple.com/lookup?id=1440833098");
+      if (res.ok) return { ok: true };
+      return { ok: false, error: `HTTP ${res.status}` };
+    }
+    // jamendo — official public API probe with the configured client id
+    if (p.id === "jamendo") {
+      if (!p.clientId) return { ok: false, error: "Client ID is required for Jamendo." };
+      const res = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${encodeURIComponent(p.clientId)}&limit=1`);
+      if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
+      const body = (await res.json().catch(() => ({}))) as { headers?: { status?: string } };
+      if (body.headers?.status && body.headers.status !== "success") {
+        return { ok: false, error: `API status: ${body.headers.status}` };
+      }
+      return { ok: true };
+    }
+    return { ok: false, error: "Unknown provider." };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Network error" };
   }

@@ -3,7 +3,7 @@
  */
 
 export const APP_NAME = "MAMADO";
-export const APP_VERSION = "1.0.0";
+export const APP_VERSION = "1.1.0";
 export const BRAND_TAGLINE = "productivity / music OS";
 
 export const TASK_STATUS_META: Record<

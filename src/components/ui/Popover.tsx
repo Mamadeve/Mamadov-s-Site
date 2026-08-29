@@ -79,7 +79,7 @@ export function Popover({ open, onClose, anchor, children, className, align = "e
       {open ? (
         <>
           {/* invisible outside-click catcher, below the panel */}
-          <div className="fixed inset-0 z-[94]" onPointerDown={onClose} aria-hidden />
+          <div className="fixed inset-0 z-[119]" onPointerDown={onClose} aria-hidden />
           <motion.div
             ref={panelRef}
             role="menu"
@@ -94,7 +94,7 @@ export function Popover({ open, onClose, anchor, children, className, align = "e
               visibility: pos ? "visible" : "hidden",
             }}
             className={cn(
-              "fixed z-[95] overflow-hidden rounded-xl border border-line bg-[var(--panel)] p-1",
+              "fixed z-[120] overflow-hidden rounded-xl border border-line bg-[var(--panel)] p-1",
               "shadow-[0_16px_50px_rgba(0,0,0,0.45)]",
               className,
             )}

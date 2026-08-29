@@ -10,7 +10,7 @@ import { listTracks, deleteTrack, listRecentlyPlayed } from "@/services/music";
 import { useAuthStore, useToast, usePlayerStore } from "@/store";
 import { dbErrorMessage } from "@/lib/supabase";
 import { useDebounce } from "@/hooks/useMisc";
-import { useRealtime } from "@/hooks/useRealtime";
+import { useDataSync } from "@/hooks/useDataSync";
 import { TrackRow } from "@/components/music/TrackRow";
 import { AddMusicModal } from "@/components/music/AddMusicModal";
 import { Button, Input, Select } from "@/components/ui/primitives";
@@ -60,8 +60,8 @@ export default function MusicPage() {
     void load();
   }, [load]);
 
-  /* realtime sync — new tracks from other users appear automatically */
-  useRealtime("music_tracks", () => void load());
+  /* data sync — realtime from other users + instant local updates (no refresh) */
+  useDataSync("music_tracks", () => void load());
 
   const remove = async (t: TrackWithMeta) => {
     try {
@@ -107,7 +107,7 @@ export default function MusicPage() {
               showFavorites ? "bg-[var(--panel2)] text-[var(--txt)]" : "text-[var(--txt-faint)] hover:text-[var(--txt)]",
             )}
           >
-            ♥ FAVES
+            ♥ FAVORITES
           </button>
         </div>
       </div>

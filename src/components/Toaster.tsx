@@ -17,7 +17,7 @@ export function Toaster() {
   const dismiss = useUIStore((s) => s.dismissToast);
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-20 z-[90] flex flex-col items-center gap-2 px-4 md:inset-x-auto md:bottom-5 md:right-5 md:items-end">
+    <div className="pointer-events-none fixed inset-x-0 bottom-20 z-[130] flex flex-col items-center gap-2 px-4 md:inset-x-auto md:bottom-5 md:right-5 md:items-end">
       <AnimatePresence>
         {toasts.map((t) => (
           <motion.div

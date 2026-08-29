@@ -22,6 +22,7 @@ import { listActivity } from "@/services/activity";
 import { fetchStats, type ProductivityStats } from "@/services/stats";
 import { useAuthStore } from "@/store/auth";
 import { useUIStore } from "@/store/ui";
+import { useDataSync } from "@/hooks/useDataSync";
 import { cn, fmtDueDate, formatDateIn, isOverdue, timeAgo } from "@/lib/utils";
 import { TASK_PRIORITY_META } from "@/config/constants";
 import { SectionHeader, StatusDot } from "@/components/ui/bits";
@@ -53,6 +54,10 @@ export default function DashboardPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  /* data sync — dashboard updates instantly when tasks/music change anywhere */
+  useDataSync("tasks", () => void load());
+  useDataSync("music_tracks", () => void load());
 
   const pending = useMemo(() => tasks.filter((t) => !["completed", "archived"].includes(t.status)), [tasks]);
   const completed = useMemo(() => tasks.filter((t) => t.status === "completed"), [tasks]);

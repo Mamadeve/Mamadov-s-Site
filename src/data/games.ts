@@ -4,9 +4,14 @@
  * `built-in` titles are first-party HTML5 games implemented inside MAMADO
  * (no third-party licensing or embedding concerns, fully offline-capable).
  *
- * The schema also supports `embed` entries: officially-provided game URLs
- * that allow iframe embedding. Any third-party entry must be added with a
- * legitimate, officially-permitted play URL — never scraped content.
+ * `embed` entries are officially-provided play URLs that explicitly permit
+ * iframe embedding (no X-Frame-Options / frame-ancestors blocking).
+ *
+ * `external` entries are games whose providers BLOCK cross-site embedding
+ * (e.g. CrazyGames sends X-Frame-Options / CSP frame-ancestors headers).
+ * These are NEVER loaded in an iframe — the Arcade opens a Liquid Glass
+ * launch window inside the app and the provider page opens in a new tab.
+ * We do not bypass any provider security headers.
  */
 export type GameCategory = "arcade" | "puzzle" | "retro" | "reflex";
 
@@ -16,8 +21,9 @@ export interface GameEntry {
   category: GameCategory;
   creator: string;
   description: string;
-  kind: "built-in" | "embed";
-  /** For embed kind: the official play/embed URL (permits framing). */
+  kind: "built-in" | "embed" | "external";
+  /** For embed kind: official play/embed URL (permits framing).
+   *  For external kind: the official game page URL (opened in a new tab). */
   url?: string;
   year: string;
 }
@@ -49,6 +55,51 @@ export const GAMES: GameEntry[] = [
     description: "Slide, merge, double. A quiet numbers puzzle for loud brains.",
     kind: "built-in",
     year: "2014",
+  },
+  /* ── CrazyGames catalogue ───────────────────────────────────────────────
+   * CrazyGames does NOT allow its pages to be embedded in iframes on other
+   * sites (X-Frame-Options / CSP). These are integrated legitimately as
+   * `external` entries: the Arcade shows an in-app Liquid Glass launch
+   * window and the game opens on crazygames.com in a new browser tab. */
+  {
+    id: "cg-electron-dash",
+    title: "ELECTRON DASH",
+    category: "reflex",
+    creator: "CrazyGames",
+    description: "Sprint across a neon space tube, dodge barriers and don't fall off the edge of the galaxy.",
+    kind: "external",
+    url: "https://www.crazygames.com/game/electron-dash",
+    year: "2021",
+  },
+  {
+    id: "cg-smash-karts",
+    title: "SMASH KARTS",
+    category: "arcade",
+    creator: "CrazyGames",
+    description: "Explosive 3D kart arena battles. Pick up power-ups and blow the lobby away.",
+    kind: "external",
+    url: "https://www.crazygames.com/game/smash-karts",
+    year: "2020",
+  },
+  {
+    id: "cg-drift-boss",
+    title: "DRIFT BOSS",
+    category: "reflex",
+    creator: "CrazyGames",
+    description: "One button. Endless corners. Drift the hairpins and survive the narrow road.",
+    kind: "external",
+    url: "https://www.crazygames.com/game/drift-boss",
+    year: "2019",
+  },
+  {
+    id: "cg-retro-bowl",
+    title: "RETRO BOWL",
+    category: "arcade",
+    creator: "CrazyGames",
+    description: "Manage your franchise and throw pixel-perfect passes in this beloved retro football hit.",
+    kind: "external",
+    url: "https://www.crazygames.com/game/retro-bowl",
+    year: "2017",
   },
 ];
 

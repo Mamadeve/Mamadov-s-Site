@@ -9,7 +9,7 @@ import { saveLocalPrefs } from "@/services/auth";
 import { dbErrorMessage } from "@/lib/supabase";
 import { Button, Input, Textarea, FieldLabel } from "@/components/ui/primitives";
 import { Badge, ErrorNote } from "@/components/ui/bits";
-import { initials } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
 import type { UserPreferences } from "@/types/database";
 
 export default function ProfilePage() {
@@ -121,10 +121,22 @@ export default function ProfilePage() {
 
         {error ? <ErrorNote message={error} /> : null}
 
-        <div className="mt-2 flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => void signOut()}>
+        {/* footer — clear separation: destructive sign-out (left) vs save (right).
+            The old ambiguous "filled box" is replaced by an explicit, labeled
+            Liquid Glass button with full hover/focus/active states. */}
+        <div className="mt-2 flex items-center justify-between gap-3 border-t border-dashed border-line pt-4">
+          <button
+            onClick={() => void signOut()}
+            className={cn(
+              "press inline-flex cursor-pointer items-center gap-2 rounded-[10px] border px-3.5 py-2 text-xs font-medium",
+              "border-[color-mix(in_srgb,var(--color-negative)_30%,var(--line))] text-[var(--color-negative)]",
+              "bg-[color-mix(in_srgb,var(--color-negative)_6%,transparent)]",
+              "transition-colors hover:border-[var(--color-negative)] hover:bg-[color-mix(in_srgb,var(--color-negative)_12%,transparent)]",
+              "focus-visible:outline-[var(--color-negative)]",
+            )}
+          >
             <LogOut size={13} /> Sign out
-          </Button>
+          </button>
           <Button variant="primary" size="sm" loading={saving} onClick={() => void save()}>
             <Save size={13} /> Save profile
           </Button>

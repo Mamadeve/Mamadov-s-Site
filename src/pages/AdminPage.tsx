@@ -3,17 +3,19 @@
  * Manage users, roles, categories, and application settings.
  */
 import { useCallback, useEffect, useState } from "react";
-import { FolderTree, Plug, Settings2, ShieldCheck, Users } from "lucide-react";
+import { FolderTree, Music, Plug, Settings2, ShieldCheck, Trash2, Users } from "lucide-react";
 import type { Category, Profile, UserRole } from "@/types/database";
 import { useAuthStore, useToast } from "@/store";
-import { listUsers, setUserRole, listAppSettings, setAppSetting } from "@/services/admin";
+import { listUsers, setUserRole, listAppSettings, setAppSetting, deleteAppSetting } from "@/services/admin";
 import { listCategories, createCategory, deleteCategory } from "@/services/categories";
 import { dbErrorMessage } from "@/lib/supabase";
 import { Badge, EmptyState, ErrorNote } from "@/components/ui/bits";
 import { Button, Input } from "@/components/ui/primitives";
 import { IntegrationsCenter } from "@/components/admin/IntegrationsCenter";
+import { MusicApprovals } from "@/components/admin/MusicApprovals";
 import { timeAgo, initials } from "@/lib/utils";
 import { Loader } from "@/components/loader/Loader";
+import { APP_VERSION } from "@/config/constants";
 
 export default function AdminPage() {
   const profile = useAuthStore((s) => s.profile);
@@ -104,21 +106,27 @@ export default function AdminPage() {
   };
 
   return (
-    <div>
+    <div className="animate-rise">
       <div className="mb-8 flex items-center gap-3">
-        <div className="dot-grid-sm flex size-11 items-center justify-center rounded-xl border border-line">
+        <div className="glass-panel glass-sheen flex size-11 items-center justify-center rounded-xl">
           <ShieldCheck size={18} className="text-[var(--txt)]" />
         </div>
         <div>
           <h1 className="display text-2xl tracking-wide text-[var(--txt)]">ADMIN CONSOLE</h1>
-          <p className="meta mt-1">SYSTEM CONTROL · ROOT ACCESS</p>
+          <p className="meta mt-1">SYSTEM CONTROL · ROOT ACCESS · V{APP_VERSION}</p>
         </div>
       </div>
 
       {error ? <div className="mb-4"><ErrorNote message={error} /></div> : null}
 
+      {/* music review queue — user submissions awaiting approval */}
+      <section className="glass-panel glass-sheen mb-6 rounded-[var(--radius-card)] p-5">
+        <h2 className="meta mb-4 flex items-center gap-2"><Music size={13} /> Music review queue · user submissions</h2>
+        <MusicApprovals />
+      </section>
+
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="card-surface p-5">
+        <section className="card-surface glass-sheen p-5">
           <h2 className="meta mb-4 flex items-center gap-2">
             <Users size={13} /> MEMBERS — {users.length}
           </h2>
@@ -142,14 +150,14 @@ export default function AdminPage() {
         </section>
 
         {/* integrations — API center */}
-        <section className="mt-8">
+        <section className="card-surface glass-sheen p-5">
           <h2 className="meta mb-4 flex items-center gap-2"><Plug size={13} /> API Center · Integrations</h2>
           <IntegrationsCenter />
         </section>
 
         <div className="mt-8 flex flex-col gap-6">
           {/* categories */}
-          <section className="card-surface p-5">
+          <section className="card-surface glass-sheen p-5">
             <h2 className="meta mb-4 flex items-center gap-2"><FolderTree size={13} /> Categories</h2>
             <div className="mb-3 flex gap-2">
               <Input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void addCategory()} placeholder="New category…" />
@@ -171,7 +179,7 @@ export default function AdminPage() {
           </section>
 
           {/* settings */}
-          <section className="card-surface p-5">
+          <section className="card-surface glass-sheen p-5">
             <h2 className="meta mb-4 flex items-center gap-2"><Settings2 size={13} /> Application settings</h2>
             <div className="mb-3 space-y-2">
               <Input value={settingKey} onChange={(e) => setSettingKey(e.target.value)} placeholder="Key (e.g. allow_music_from_anyone)" />
@@ -183,9 +191,30 @@ export default function AdminPage() {
                 <span className="meta">NO CUSTOM SETTINGS</span>
               ) : (
                 Object.entries(settings).map(([k, v]) => (
-                  <div key={k} className="flex items-center justify-between rounded-lg border border-line/60 px-3 py-2">
-                    <span className="font-mono text-xs text-[var(--txt-dim)]">{k}</span>
-                    <span className="font-mono text-xs text-[var(--txt-faint)]">{String(v)}</span>
+                  <div key={k} className="group flex items-center justify-between gap-3 rounded-lg border border-line/60 px-3 py-2">
+                    <span className="truncate font-mono text-xs text-[var(--txt-dim)]">{k}</span>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate font-mono text-xs text-[var(--txt-faint)]">{String(v)}</span>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await deleteAppSetting(k);
+                            setSettings((prev) => {
+                              const next = { ...prev };
+                              delete next[k];
+                              return next;
+                            });
+                            toast({ title: "Setting removed" });
+                          } catch (e) {
+                            toast({ title: "Couldn't remove setting", description: dbErrorMessage(e as never), variant: "error" });
+                          }
+                        }}
+                        aria-label={`Delete ${k}`}
+                        className="cursor-pointer p-1 text-[var(--txt-faint)] opacity-0 transition-opacity hover:text-[var(--color-negative)] group-hover:opacity-100"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </span>
                   </div>
                 ))
               )}

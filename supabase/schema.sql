@@ -229,7 +229,70 @@ create table if not exists public.music_tracks (
 alter table public.music_tracks enable row level security;
 create index music_source_idx on public.music_tracks (source);
 
-create policy "music select public"      on public.music_tracks for select to authenticated using (true);
+-- review workflow: non-admin submissions stay pending until admin-approved
+-- (triggers music_enforce_review / music_enforce_upload_limit — see
+--  supabase/migrations/2026-08-29_music_approval_limits.sql)
+alter table public.music_tracks add column if not exists status text not null default 'approved';
+do $$ begin
+  alter table public.music_tracks add constraint music_tracks_status_check
+    check (status in ('pending','approved','rejected'));
+exception when duplicate_object then null; when 42710 then null; end $$;
+
+create or replace function public.music_enforce_review()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then
+    new.status := 'pending';
+  end if;
+  return new;
+end; $$;
+
+drop trigger if exists music_enforce_review on public.music_tracks;
+create trigger music_enforce_review
+  before insert on public.music_tracks
+  for each row execute procedure public.music_enforce_review();
+
+create or replace function public.music_upload_limit()
+returns integer language sql stable security definer set search_path = public as $$
+  select coalesce(
+    (select case jsonb_typeof(value)
+              when 'number' then (value #>> '{}')::int
+              when 'string' then nullif(value #>> '{}', '')::int
+              else null end
+     from public.app_settings where key = 'public.music_upload_limit'),
+    1);
+$$;
+
+create or replace function public.music_enforce_upload_limit()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  v_limit integer;
+  v_count integer;
+begin
+  if public.is_admin() then return new; end if;
+  if new.source <> 'direct' then return new; end if; -- links are unlimited
+  select public.music_upload_limit() into v_limit;
+  if v_limit is null or v_limit < 0 then return new; end if;
+  select count(*) into v_count
+    from public.music_tracks
+   where added_by = auth.uid() and source = 'direct';
+  if v_count >= v_limit then
+    raise exception 'Upload limit reached — % uploaded audio file(s) per account. Music links are unlimited.', v_limit
+      using errcode = 'check_violation';
+  end if;
+  return new;
+end; $$;
+
+drop trigger if exists music_enforce_upload_limit on public.music_tracks;
+create trigger music_enforce_upload_limit
+  before insert on public.music_tracks
+  for each row execute procedure public.music_enforce_upload_limit();
+
+insert into public.app_settings (key, value, updated_by)
+values ('public.music_upload_limit', '1'::jsonb, null)
+on conflict (key) do nothing;
+
+create policy "music select visible"       on public.music_tracks for select to authenticated using (status = 'approved' or added_by = auth.uid() or public.is_admin());
 create policy "music insert user/admin"  on public.music_tracks for insert to authenticated with check (added_by = auth.uid() or public.is_admin());
 create policy "music update own/admin"   on public.music_tracks for update to authenticated using (added_by = auth.uid() or public.is_admin()) with check (added_by = auth.uid() or public.is_admin());
 create policy "music delete own/admin"   on public.music_tracks for delete to authenticated using (added_by = auth.uid() or public.is_admin());

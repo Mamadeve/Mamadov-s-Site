@@ -202,6 +202,91 @@ input, textarea, select, button { font: inherit; color: inherit; }
   line-height: 1.9;
 }
 
+/* ── Liquid Glass (iOS-inspired refinement of the existing language) ── */
+
+:root {
+  --glass-bg: color-mix(in srgb, var(--panel) 58%, transparent);
+  --glass-bg-strong: color-mix(in srgb, var(--panel) 80%, transparent);
+  --glass-line: color-mix(in srgb, var(--txt) 13%, var(--line));
+  --glass-highlight: color-mix(in srgb, var(--txt) 9%, transparent);
+  --glass-shadow: 0 24px 70px -20px rgba(0, 0, 0, 0.6), 0 6px 20px -6px rgba(0, 0, 0, 0.35);
+}
+
+html.light {
+  --glass-shadow: 0 24px 70px -24px rgba(20, 20, 35, 0.25), 0 6px 20px -8px rgba(20, 20, 35, 0.12);
+}
+
+/* Translucent, blurred surface */
+@utility glass {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(160%);
+}
+
+/* Denser surface for floating bars & overlays */
+@utility glass-strong {
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+}
+
+/* Soft border + layered depth (inner highlight, outer shadow) */
+@utility glass-edge {
+  border: 1px solid var(--glass-line);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-highlight),
+    inset 0 -1px 0 0 color-mix(in srgb, var(--txt) 4%, transparent),
+    var(--glass-shadow);
+}
+
+/* Complete glass card */
+@utility glass-panel {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  backdrop-filter: blur(24px) saturate(170%);
+  border: 1px solid var(--glass-line);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-highlight),
+    inset 0 -1px 0 0 color-mix(in srgb, var(--txt) 4%, transparent),
+    var(--glass-shadow);
+}
+
+/* Top bar glass — denser, readable over scrolling content */
+@utility glass-bar {
+  background: color-mix(in srgb, var(--bg) 72%, var(--panel));
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  backdrop-filter: blur(20px) saturate(170%);
+  border-bottom: 1px solid var(--glass-line);
+}
+
+/* Elegant diagonal sheen for hero glass surfaces */
+@utility glass-sheen {
+  position: relative;
+  overflow: hidden;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--txt) 7%, transparent) 0%,
+      transparent 30%,
+      transparent 70%,
+      color-mix(in srgb, var(--txt) 4%, transparent) 100%
+    );
+  }
+}
+
+/* Smooth iOS-like spring micro-interaction */
+@utility press {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+/* ── Reduced motion ───────────────────────────────────────── */
 
 /* ── Reduced motion ───────────────────────────────────────── */
 

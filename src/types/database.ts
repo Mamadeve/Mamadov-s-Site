@@ -9,7 +9,9 @@ export type TaskStatus = "todo" | "in_progress" | "completed" | "archived";
 
 export type TaskPriority = "low" | "medium" | "high" | "critical";
 
-export type MusicSource = "spotify" | "soundcloud" | "direct";
+export type MusicSource = "spotify" | "soundcloud" | "direct" | "applemusic";
+
+export type MusicStatus = "pending" | "approved" | "rejected";
 
 export type FocusSessionType = "focus" | "short_break" | "long_break";
 
@@ -63,6 +65,8 @@ export interface MusicTrack {
   duration_seconds: number | null;
   notes: string | null;
   category_id: string | null;
+  /** Review workflow — non-admin submissions stay pending until approved. */
+  status: MusicStatus;
   added_by: string;
   created_at: string;
 }

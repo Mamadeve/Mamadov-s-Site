@@ -4,7 +4,7 @@
  * hidden behind the header, and flips near viewport edges.
  */
 import { motion } from "framer-motion";
-import { Heart, MoreHorizontal, Music2, Pause, Play, Trash2, Pencil, ExternalLink } from "lucide-react";
+import { Clock, Heart, MoreHorizontal, Music2, Pause, Play, Trash2, Pencil, ExternalLink } from "lucide-react";
 import { useRef, useState } from "react";
 import type { TrackWithMeta } from "@/types/database";
 import { usePlayerStore } from "@/store/player";
@@ -13,7 +13,7 @@ import { toggleTrackFavorite } from "@/services/music";
 import { cn, timeAgo } from "@/lib/utils";
 import { Popover } from "@/components/ui/Popover";
 
-const sourceLabel = { spotify: "SPOTIFY", soundcloud: "SOUNDCLOUD", direct: "DIRECT" } as const;
+const sourceLabel = { spotify: "SPOTIFY", soundcloud: "SOUNDCLOUD", direct: "DIRECT", applemusic: "APPLE MUSIC" } as const;
 
 export function TrackRow({
   track,
@@ -84,7 +84,19 @@ export function TrackRow({
         <p className={cn("truncate text-[13px] font-medium", isCurrent ? "text-[var(--txt)]" : "text-[var(--txt-dim)]")}>
           {track.title}
         </p>
-        <p className="meta truncate normal-case tracking-normal">{track.artist}</p>
+        <p className="meta flex items-center gap-2 truncate normal-case tracking-normal">
+          {track.artist}
+          {track.status === "pending" ? (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[color-mix(in_srgb,var(--color-caution)_40%,var(--line))] px-1.5 py-px text-[9px] uppercase tracking-widest text-[var(--color-caution)]">
+              <Clock size={8} /> pending review
+            </span>
+          ) : null}
+          {track.status === "rejected" ? (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[color-mix(in_srgb,var(--color-negative)_40%,var(--line))] px-1.5 py-px text-[9px] uppercase tracking-widest text-[var(--color-negative)]">
+              rejected
+            </span>
+          ) : null}
+        </p>
       </div>
 
       {/* category */}

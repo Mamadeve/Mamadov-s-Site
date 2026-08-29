@@ -66,7 +66,7 @@ export function AppShell() {
   return (
     <div className="dot-grid min-h-dvh bg-[var(--bg)]">
       {/* ── Desktop sidebar ── */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-56 flex-col border-r border-line bg-[var(--panel)] md:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-56 flex-col border-r border-line bg-[color-mix(in_srgb,var(--panel)_88%,transparent)] backdrop-blur-xl md:flex">
         <div className="flex items-center gap-3 border-b border-line px-5 py-4">
           <div className="dot-grid-sm flex size-8 items-center justify-center rounded-lg border border-line">
             <span className="display text-[13px] text-[var(--txt)]">M</span>
@@ -149,7 +149,13 @@ export function AppShell() {
         </div>
       </aside>
       {/* ── Top bar ── */}
-      <header className="sticky top-0 z-20 border-b border-line bg-[color-mix(in_srgb,var(--bg)_86%,transparent)] backdrop-blur-md md:pl-56">
+      <header className="glass-bar sticky top-0 z-20 md:pl-56">
+        {/* soft glass hairline glow under the bar */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 -bottom-px h-px"
+          style={{ background: "linear-gradient(90deg, transparent, color-mix(in srgb, var(--txt) 18%, transparent), transparent)" }}
+        />
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 md:px-8">
           <div className="flex items-center gap-2 md:hidden">
             <div className="dot-grid-sm flex size-7 items-center justify-center rounded-md border border-line">
@@ -223,7 +229,7 @@ export function AppShell() {
       </main>
 
       {/* ── Mobile bottom nav ── */}
-      <nav className="fixed inset-x-0 bottom-[62px] z-30 flex h-14 items-stretch border-t border-line bg-[var(--panel)] md:hidden">
+      <nav className="glass-strong fixed inset-x-0 bottom-[62px] z-30 flex h-14 items-stretch md:hidden">
         {MOBILE_NAV.map((item) => (
           <NavLink
             key={item.to}

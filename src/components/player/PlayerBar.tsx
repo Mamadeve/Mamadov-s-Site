@@ -38,7 +38,13 @@ import { useUIStore } from "@/store/ui";
 import { useAuthStore } from "@/store/auth";
 import { toggleTrackFavorite } from "@/services/music";
 import { cn, fmtDuration } from "@/lib/utils";
-import { spotifyEmbedUrl, spotifyEmbedHeight, scEmbedUrl } from "@/services/music-providers";
+import {
+  spotifyEmbedUrl,
+  spotifyEmbedHeight,
+  scEmbedUrl,
+  appleMusicEmbedUrl,
+  appleMusicEmbedHeight,
+} from "@/services/music-providers";
 import { WaveformLoader } from "@/components/ui/CircleLoaders";
 
 function Cover({ url, className }: { url?: string | null; className?: string }) {
@@ -51,7 +57,30 @@ function Cover({ url, className }: { url?: string | null; className?: string }) 
   );
 }
 
-const SOURCE_LABEL = { spotify: "SPOTIFY", soundcloud: "SOUNDCLOUD", direct: "DIRECT" } as const;
+const SOURCE_LABEL = { spotify: "SPOTIFY", soundcloud: "SOUNDCLOUD", direct: "DIRECT", applemusic: "APPLE MUSIC" } as const;
+
+/** Volume slider with a filled track that always mirrors the real value. */
+function VolumeSlider({ value, onChange, className }: { value: number; onChange: (v: number) => void; className?: string }) {
+  const pct = Math.round(Math.min(1, Math.max(0, value)) * 100);
+  return (
+    <input
+      type="range"
+      min={0}
+      max={1}
+      step={0.01}
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      aria-label="Volume"
+      style={{ background: `linear-gradient(to right, var(--txt) ${pct}%, var(--line) ${pct}%)` }}
+      className={cn(
+        "h-1 cursor-pointer appearance-none rounded-full",
+        "[&::-webkit-slider-thumb]:size-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--txt)] [&::-webkit-slider-thumb]:shadow-[0_0_8px_var(--glow)]",
+        "[&::-moz-range-thumb]:size-3 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-[var(--txt)]",
+        className,
+      )}
+    />
+  );
+}
 
 export function PlayerBar() {
   const s = usePlayerStore();
@@ -65,9 +94,9 @@ export function PlayerBar() {
   const isEmbed = current ? current.source !== "direct" : false;
   const embedSrc = useMemo(() => {
     if (!current || !isEmbed) return null;
-    return current.source === "spotify"
-      ? (spotifyEmbedUrl(current.source_url) ?? undefined)
-      : scEmbedUrl(current.source_url, true);
+    if (current.source === "spotify") return spotifyEmbedUrl(current.source_url) ?? undefined;
+    if (current.source === "applemusic") return appleMusicEmbedUrl(current.source_url) ?? undefined;
+    return scEmbedUrl(current.source_url, true);
   }, [current, isEmbed]);
 
   const fav = current ? s.favorites.has(current.id) : false;
@@ -96,7 +125,7 @@ export function PlayerBar() {
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         className="fixed inset-x-3 bottom-[130px] z-40 md:inset-x-auto md:bottom-[88px] md:left-auto md:right-4 md:w-[420px]"
       >
-        <div className="overflow-hidden rounded-2xl border border-line bg-[var(--panel)]/95 shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur-md">
+        <div className="glass-strong glass-edge overflow-hidden rounded-2xl">
           {/* error strip — honest, with retry */}
           {s.playbackState === "error" || s.playbackState === "unsupported" ? (
             <div className="flex items-center gap-2 border-b border-line bg-[color-mix(in_srgb,var(--color-negative)_8%,transparent)] px-3 py-1.5">
@@ -119,7 +148,7 @@ export function PlayerBar() {
               onChange={(e) => s.seek(Number(e.target.value))}
               disabled={isEmbed}
               aria-label="Seek"
-              className="absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none bg-transparent disabled:cursor-default [&::-webkit-slider-thumb]:size-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-transparent"
+              className="absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none bg-transparent disabled:cursor-default [&::-webkit-slider-thumb]:hidden [&::-moz-range-thumb]:hidden"
             />
             <div className="pointer-events-none h-full bg-[var(--txt)] transition-[width] duration-150" style={{ width: `${progressPct}%` }} />
           </div>
@@ -174,15 +203,18 @@ export function PlayerBar() {
               <button onClick={s.toggleMute} aria-label="Mute" className="cursor-pointer text-[var(--txt-faint)] transition-colors hover:text-[var(--txt)]">
                 <VolIcon size={14} />
               </button>
-              <input
-                type="range"
-                min={0} max={1} step={0.02}
-                value={s.muted ? 0 : s.volume}
-                onChange={(e) => s.setVolume(Number(e.target.value))}
-                aria-label="Volume"
-                className="h-1 w-16 cursor-pointer appearance-none rounded-full bg-[var(--line)] [&::-webkit-slider-thumb]:size-2.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--txt)]"
-              />
+              <VolumeSlider value={s.muted ? 0 : s.volume} onChange={(v) => s.setVolume(v)} className="w-16" />
             </div>
+
+            {/* close — dismisses the floating player entirely */}
+            <button
+              onClick={() => { setQueueOpen(false); s.close(); }}
+              aria-label="Close player"
+              title="Close player"
+              className="press cursor-pointer rounded-full border border-line bg-[var(--panel2)]/60 p-1.5 text-[var(--txt-faint)] transition-colors hover:border-[color-mix(in_srgb,var(--color-negative)_50%,var(--line))] hover:text-[var(--color-negative)]"
+            >
+              <X size={13} />
+            </button>
 
           </div>
         </div>
@@ -196,7 +228,7 @@ export function PlayerBar() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.18 }}
-            className="fixed bottom-[150px] right-4 z-50 hidden w-80 overflow-hidden rounded-xl border border-line bg-[var(--panel)] shadow-2xl md:block"
+            className="glass-strong glass-edge fixed bottom-[150px] right-4 z-50 hidden w-80 overflow-hidden rounded-xl md:block"
           >
             <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
               <span className="meta">QUEUE — {s.queue.length} TRACKS</span>
@@ -239,7 +271,13 @@ export function PlayerBar() {
         {playerExpanded ? (
           <ExpandedPlayer
             embedSrc={embedSrc}
-            embedHeight={current.source === "spotify" ? spotifyEmbedHeight(current.source_url) : 180}
+            embedHeight={
+              current.source === "spotify"
+                ? spotifyEmbedHeight(current.source_url)
+                : current.source === "applemusic"
+                  ? appleMusicEmbedHeight(current.source_url)
+                  : 180
+            }
             sourceUrl={current.source_url}
             onMinimize={() => setPlayerExpanded(false)}
           />
@@ -264,6 +302,7 @@ function ExpandedPlayer({
   const s = usePlayerStore();
   const current = s.queue.find((t) => t.id === s.currentId) ?? null;
   const isEmbed = current ? current.source !== "direct" : false;
+  const [queueOpen, setQueueOpen] = useState(false);
   const progressPct = s.duration > 0 ? (s.progress / s.duration) * 100 : 0;
   const VolIcon = s.muted || s.volume === 0 ? VolumeX : s.volume < 0.5 ? Volume1 : Volume2;
   const fav = current ? s.favorites.has(current.id) : false;
@@ -291,6 +330,10 @@ function ExpandedPlayer({
       exit={{ y: "100%", opacity: 0.4 }}
       transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
       className="dot-grid fixed inset-0 z-[60] flex flex-col bg-[var(--bg)]"
+      style={{
+        backgroundImage:
+          "radial-gradient(900px 420px at 50% -8%, color-mix(in srgb, var(--txt) 6%, transparent), transparent 70%)",
+      }}
       role="dialog"
       aria-label="Music player"
     >
@@ -346,12 +389,12 @@ function ExpandedPlayer({
                 className="rounded-xl border border-line"
               />
               <a href={sourceUrl} target="_blank" rel="noreferrer" className="meta mt-2 flex items-center justify-center gap-1.5 hover:text-[var(--txt-dim)]">
-                <ExternalLink size={11} /> OPEN IN OFFICIAL {current.source.toUpperCase()} APP
+                <ExternalLink size={11} /> OPEN IN OFFICIAL {current.source === "applemusic" ? "APPLE MUSIC" : current.source.toUpperCase()} APP
               </a>
             </div>
           ) : (
             <p className="meta max-w-64 text-center leading-relaxed">
-              THIS {current.source.toUpperCase()} LINK CAN'T BE EMBEDDED — USE THE OFFICIAL APP
+              THIS {(current.source === "applemusic" ? "APPLE MUSIC" : current.source.toUpperCase())} LINK CAN'T BE EMBEDDED — USE THE OFFICIAL APP
             </p>
           )
         ) : (
@@ -375,24 +418,27 @@ function ExpandedPlayer({
               <button onClick={s.toggleMute} aria-label="Mute" className="cursor-pointer text-[var(--txt-faint)] transition-colors hover:text-[var(--txt)]">
                 <VolIcon size={16} />
               </button>
-              <input
-                type="range"
-                min={0} max={1} step={0.02}
-                value={s.muted ? 0 : s.volume}
-                onChange={(e) => s.setVolume(Number(e.target.value))}
-                aria-label="Volume"
-                className="h-1 w-32 cursor-pointer appearance-none rounded-full bg-[var(--line)] [&::-webkit-slider-thumb]:size-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--txt)]"
-              />
+              <VolumeSlider value={s.muted ? 0 : s.volume} onChange={(v) => s.setVolume(v)} className="w-32" />
             </div>
           </div>
         )}
 
 
-        {/* queue */}
-        {s.queue.length > 1 ? (
-          <div className="w-full max-w-lg">
-            <p className="meta mb-2">QUEUE — {s.queue.length} TRACKS</p>
-            <div className="max-h-36 overflow-y-auto rounded-xl border border-line p-1.5">
+        {/* queue — 7th control target, toggled from the control row */}
+        {queueOpen ? (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="glass-panel w-full max-w-lg rounded-2xl p-3"
+          >
+            <div className="mb-2 flex items-center justify-between px-1">
+              <p className="meta">QUEUE — {s.queue.length} TRACKS</p>
+              <button onClick={() => setQueueOpen(false)} aria-label="Close queue" className="cursor-pointer text-[var(--txt-faint)] hover:text-[var(--txt)]">
+                <X size={13} />
+              </button>
+            </div>
+            <div className="max-h-48 overflow-y-auto p-1">
               {s.queue.map((t) => (
                 <div
                   key={t.id}
@@ -418,13 +464,21 @@ function ExpandedPlayer({
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
         ) : null}
 
       </div>
 
-      <div className="flex items-center justify-center gap-5 pb-10 pt-2">
-        <button onClick={s.toggleShuffle} aria-label="Shuffle" className={cn("cursor-pointer p-2 transition-colors", s.shuffle ? "text-[var(--txt)]" : "text-[var(--txt-faint)] hover:text-[var(--txt-dim)]")}>
+      <div className="flex flex-wrap items-center justify-center gap-4 pb-10 pt-2 md:gap-5">
+        {/* 7th control — queue */}
+        <button
+          onClick={() => setQueueOpen((q) => !q)}
+          aria-label="Queue"
+          className={cn("press cursor-pointer p-2 transition-colors", queueOpen ? "text-[var(--txt)]" : "text-[var(--txt-faint)] hover:text-[var(--txt-dim)]")}
+        >
+          <ListMusic size={17} />
+        </button>
+        <button onClick={s.toggleShuffle} aria-label="Shuffle" className={cn("press cursor-pointer p-2 transition-colors", s.shuffle ? "text-[var(--txt)]" : "text-[var(--txt-faint)] hover:text-[var(--txt-dim)]")}>
           <Shuffle size={17} />
         </button>
         <button onClick={s.prev} aria-label="Previous" className="cursor-pointer p-2 text-[var(--txt)]">

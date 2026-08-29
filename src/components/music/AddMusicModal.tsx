@@ -1,20 +1,34 @@
 /**
  * Music — add/edit track modal with official oEmbed metadata resolution.
- * Any valid https URL is accepted (spotify / soundcloud / direct audio).
+ * Any valid https URL is accepted (spotify / soundcloud / apple music /
+ * direct audio). Liquid Glass design, cover-image upload, and the admin
+ * review workflow (non-admin submissions are published after approval).
  */
 import { useEffect, useRef, useState } from "react";
-import { Link2, Music2, Sparkles, Upload } from "lucide-react";
+import { Image as ImageIcon, Link2, Music2, Sparkles, Upload, X } from "lucide-react";
 import type { Category, TrackWithMeta } from "@/types/database";
 import { Modal } from "@/components/ui/Modal";
 import { Button, Input, Textarea, FieldLabel, Select } from "@/components/ui/primitives";
 import { ErrorNote } from "@/components/ui/bits";
 import { WaveformLoader } from "@/components/ui/CircleLoaders";
 import { useAuthStore, useToast } from "@/store";
-import { addTrack, updateTrack, uploadAudioFile, isAudioFile } from "@/services/music";
+import {
+  addTrack,
+  updateTrack,
+  uploadAudioFile,
+  uploadCoverImage,
+  isAudioFile,
+  isImageFile,
+  countUserDirectUploads,
+} from "@/services/music";
 import { listCategories } from "@/services/categories";
 import { dbErrorMessage } from "@/lib/supabase";
 import { detectSource, resolveMetadata, probeDirectDuration } from "@/services/music-providers";
+import { notifyDataChange } from "@/hooks/useDataSync";
 import { cn } from "@/lib/utils";
+
+/** Non-admin accounts may upload this many audio files (links unlimited). */
+const UPLOAD_LIMIT = 1;
 
 export function AddMusicModal({
   open,
@@ -27,6 +41,7 @@ export function AddMusicModal({
 }) {
   const profile = useAuthStore((s) => s.profile);
   const toast = useToast();
+  const isAdmin = profile?.role === "admin";
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
@@ -43,8 +58,12 @@ export function AddMusicModal({
   const [file, setFile] = useState<File | null>(null);
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [uploadsUsed, setUploadsUsed] = useState(0);
 
   const isEdit = Boolean(editing);
+  const uploadQuotaLeft = Math.max(0, UPLOAD_LIMIT - uploadsUsed);
+  const uploadBlocked = !isAdmin && !isEdit && uploadQuotaLeft === 0;
 
   useEffect(() => {
     if (!open) return;
@@ -54,6 +73,9 @@ export function AddMusicModal({
     setFile(null);
     setUploadPct(null);
     listCategories().then(setCategories);
+    if (profile && !isAdmin) {
+      void countUserDirectUploads(profile.id).then(setUploadsUsed);
+    }
     if (editing) {
       setUrl(editing.source_url);
       setTitle(editing.title);
@@ -64,7 +86,23 @@ export function AddMusicModal({
     } else {
       setUrl(""); setTitle(""); setArtist(""); setAlbum(""); setNotes(""); setCategoryId("");
     }
-  }, [open, editing]);
+  }, [open, editing, profile, isAdmin]);
+
+  const pickCover = async (f: File) => {
+    if (!profile) return;
+    if (!isImageFile(f)) {
+      setError("Unsupported image — use JPG, PNG, WEBP or AVIF.");
+      return;
+    }
+    setError(null);
+    try {
+      const { publicUrl } = await uploadCoverImage(f, useAuthStore.getState().sessionUserId ?? profile.id);
+      setCoverUrl(publicUrl);
+      toast({ title: "Cover image ready" });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : dbErrorMessage(e as never));
+    }
+  };
 
   const tryResolve = async () => {
     const clean = url.trim();
@@ -111,6 +149,14 @@ export function AddMusicModal({
           profile.id,
         );
         toast({ title: "Track uploaded", description: file.name, variant: "success" });
+        if (!isAdmin) {
+          toast({
+            title: "Submission received",
+            description: "Your track will be published after administrator approval.",
+          });
+        }
+        /* instant global sync — no manual refresh needed */
+        notifyDataChange("music_tracks");
         onClose();
         return;
       }
@@ -135,8 +181,18 @@ export function AddMusicModal({
         toast({ title: "Track updated", variant: "success" });
       } else {
         await addTrack(payload as never, profile.id);
-        toast({ title: "Track added", description: payload.title, variant: "success" });
+        if (isAdmin) {
+          toast({ title: "Track added", description: payload.title, variant: "success" });
+        } else {
+          toast({
+            title: "Submission received",
+            description: "Your track will be published after administrator approval.",
+            variant: "success",
+          });
+        }
       }
+      /* instant global sync — no manual refresh needed */
+      notifyDataChange("music_tracks");
       onClose();
     } catch (e) {
       setError(dbErrorMessage(e as never));
@@ -152,26 +208,56 @@ export function AddMusicModal({
       onClose={onClose}
       title={isEdit ? "EDIT TRACK" : "ADD MUSIC"}
       subtitle={isEdit ? "EDIT METADATA" : "LINK / DIRECT UPLOAD"}
+      footer={
+        <div className="flex items-center gap-2">
+          <Button
+            variant="primary"
+            className="flex-1"
+            loading={saving}
+            disabled={tab === "upload" && !isEdit ? !file : !url.trim()}
+            onClick={() => void submit()}
+          >
+            {isEdit ? "Save changes" : tab === "upload" ? "Upload to library" : "Add to library"}
+          </Button>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        </div>
+      }
     >
       <div className="flex flex-col gap-4">
         {!isEdit ? (
-          /* source mode tabs — cohesive segmented control */
-          <div className="grid grid-cols-2 overflow-hidden rounded-[10px] border border-line text-xs">
+          /* source mode tabs — cohesive Liquid Glass segmented control */
+          <div className="glass grid grid-cols-2 gap-1 overflow-hidden rounded-[12px] p-1">
             {([
               ["link", <Link2 key="i" size={12} />, "Link"],
               ["upload", <Upload key="i" size={12} />, "Upload file"],
             ] as const).map(([id, icon, label]) => (
               <button
                 key={id}
-                onClick={() => { setTab(id); setError(null); }}
+                onClick={() => { if (id === "upload" && uploadBlocked) return; setTab(id); setError(null); }}
+                disabled={id === "upload" && uploadBlocked}
                 className={cn(
-                  "flex cursor-pointer items-center justify-center gap-1.5 py-2 transition-colors",
-                  tab === id ? "bg-[var(--panel2)] text-[var(--txt)]" : "text-[var(--txt-faint)] hover:text-[var(--txt-dim)]",
+                  "flex cursor-pointer items-center justify-center gap-1.5 rounded-[9px] py-2 text-xs transition-all duration-200",
+                  tab === id
+                    ? "bg-[var(--panel2)] text-[var(--txt)] shadow-[inset_0_1px_0_var(--glass-highlight)]"
+                    : "text-[var(--txt-faint)] hover:text-[var(--txt-dim)]",
+                  id === "upload" && uploadBlocked && "cursor-not-allowed opacity-40",
                 )}
               >
                 {icon} {label.toUpperCase()}
               </button>
             ))}
+          </div>
+        ) : null}
+
+        {/* upload quota — 1 uploaded file per non-admin account; links unlimited */}
+        {!isEdit ? (
+          <div className="glass flex items-start gap-2.5 rounded-[12px] px-3.5 py-2.5">
+            <span className="mt-1 size-1.5 shrink-0 rounded-full bg-[var(--color-caution)]" />
+            <p className="text-[11.5px] leading-relaxed text-[var(--txt-dim)]">
+              {uploadBlocked
+                ? "You've used your 1 uploaded audio file. Music LINKS remain unlimited — switch to the Link tab."
+                : `Uploaded files: ${uploadQuotaLeft} of ${UPLOAD_LIMIT} remaining for your account. Music links are unlimited.`}
+            </p>
           </div>
         ) : null}
 
@@ -253,10 +339,48 @@ export function AddMusicModal({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-[var(--txt-faint)]">
-          <Music2 size={13} />
-          <span className="meta normal-case tracking-normal">cover artwork & metadata fetched from official embed APIs when available</span>
-          <Sparkles size={12} />
+        {/* cover image */}
+        <div>
+          <FieldLabel>Cover image</FieldLabel>
+          <div className="flex items-center gap-3">
+            {coverUrl ? (
+              <div className="relative shrink-0">
+                <img src={coverUrl} alt="Cover preview" className="size-16 rounded-xl border border-line object-cover" />
+                <button
+                  onClick={() => setCoverUrl(null)}
+                  aria-label="Remove cover"
+                  className="absolute -right-1.5 -top-1.5 cursor-pointer rounded-full border border-line bg-[var(--panel)] p-0.5 text-[var(--txt-faint)] transition-colors hover:text-[var(--color-negative)]"
+                >
+                  <X size={11} />
+                </button>
+              </div>
+            ) : (
+              <div className="dot-grid-sm flex size-16 shrink-0 items-center justify-center rounded-xl border border-dashed border-line text-[var(--txt-faint)]">
+                <ImageIcon size={16} />
+              </div>
+            )}
+            <button
+              onClick={() => coverInputRef.current?.click()}
+              className="press flex flex-1 cursor-pointer flex-col items-start gap-1 rounded-[10px] border border-dashed border-line px-3.5 py-3 text-left transition-colors hover:border-[color-mix(in_srgb,var(--txt)_35%,var(--line))]"
+            >
+              <span className="text-xs text-[var(--txt-dim)]">{coverUrl ? "Replace cover image" : "Upload a cover image"}</span>
+              <span className="meta normal-case tracking-normal">JPG · PNG · WEBP — optional</span>
+            </button>
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*,.jpg,.jpeg,.png,.webp,.avif"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                e.target.value = "";
+                if (f) void pickCover(f);
+              }}
+            />
+          </div>
+          <p className="meta mt-1.5 flex items-center gap-2 normal-case tracking-normal">
+            <Sparkles size={11} /> artwork & metadata auto-fetched from official embed APIs when available
+          </p>
         </div>
 
         <div>
@@ -279,20 +403,20 @@ export function AddMusicModal({
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional context…" />
         </div>
 
-        {error ? <ErrorNote message={error} /> : null}
+        {/* admin review workflow notice — Liquid Glass info card */}
+        {!isEdit && !isAdmin ? (
+          <div className="glass flex items-start gap-2.5 rounded-[12px] border-[color-mix(in_srgb,var(--color-caution)_30%,var(--glass-line))] px-3.5 py-3">
+            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--color-caution)_50%,transparent)] text-[var(--color-caution)]">
+              <Music2 size={10} />
+            </span>
+            <p className="text-[11.5px] leading-relaxed text-[var(--txt-dim)]">
+              <span className="font-medium text-[var(--txt)]">Review required.</span>{" "}
+              Your music submission will be published on the website only after administrator approval.
+            </p>
+          </div>
+        ) : null}
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="primary"
-            className="flex-1"
-            loading={saving}
-            disabled={tab === "upload" && !isEdit ? !file : !url.trim()}
-            onClick={() => void submit()}
-          >
-            {isEdit ? "Save changes" : tab === "upload" ? "Upload to library" : "Add to library"}
-          </Button>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-        </div>
+        {error ? <ErrorNote message={error} /> : null}
       </div>
     </Modal>
   );
