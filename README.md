@@ -497,7 +497,27 @@ Add your preferred license here before publishing the repository.
 🤖 Credits
 
 ```text
-┌──────────────────────────────────────┐ │ MAMADO — BUILD LOG │ ├──────────────────────────────────────┤ │ Human creativity → Mamadov │ │ AI assistance → Cline │ │ AI models → Z.ai │ │ Documentation → Internet │ │ Debugging → Stack Overflow │ │ Random ideas → 3 AM │ │ Sanity → ??? │ └──────────────────────────────────────┘ > built with AI > debugged by humans > powered by curiosity > shipped anyway (～￣▽￣)～
+
+
+
+┌──────────────────────────────────────┐
+│          MAMADO — BUILD LOG          │
+├──────────────────────────────────────┤
+│ Human creativity    → Mamadov        │
+│ AI assistance       → Cline          │
+│ AI models           → Z.ai           │
+│ Documentation       → Internet      │
+│ Debugging           → Stack Overflow │
+│ Random ideas        → 3 AM           │
+│ Sanity               → ???            │
+└──────────────────────────────────────┘
+
+> built with AI
+> debugged by humans
+> powered by curiosity
+> shipped anyway (～￣▽￣)～
+
+
 
 ```
 
