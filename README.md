@@ -31,7 +31,7 @@
 
 ## ✦ Overview
 
-**MAMADO** is a minimal, futuristic productivity and music workspace inspired by the visual language of **Nothing Phone** and **MimoCode**.
+**MAMADO** is a minimal, futuristic productivity and music workspace
 
 It brings tasks, music, focus sessions, statistics and administration together in one workspace, with an emphasis on:
 
