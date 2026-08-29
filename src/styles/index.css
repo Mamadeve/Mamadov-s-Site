@@ -1,0 +1,217 @@
+/**
+ * MAMADO — design tokens & global styles
+ * Nothing-inspired monochrome system: dark-first, 1px borders, dot grids, subtle glow.
+ */
+@import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600&display=swap");
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Ndot57";
+  src: url("/fonts/Ndot57-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Ndot57Caps";
+  src: url("/fonts/Ndot57Caps-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  /* Typography */
+  --font-display: "Ndot57", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display-caps: "Ndot57Caps", "Ndot57", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Surfaces (dark-first, inverted in light theme) */
+  --color-void: #050506;
+  --color-panel: #0c0c0e;
+  --color-panel-2: #131316;
+  --color-panel-3: #1a1a1e;
+  --color-line: #232328;
+  --color-fog: #f5f5f7;
+  --color-dim: #9d9da6;
+  --color-faint: #5d5d66;
+
+  /* Accents — restrained, mostly monochrome */
+  --color-pulse: #f5f5f7;
+  --color-positive: #4ade80;
+  --color-negative: #f87171;
+  --color-caution: #fbbf24;
+  --color-info: #71717a;
+
+  --radius-card: 14px;
+
+  --animate-blink: blink 1.6s steps(2, start) infinite;
+  --animate-scan: scan 7s linear infinite;
+  --animate-rise: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  @keyframes blink {
+    50% { opacity: 0.25; }
+  }
+  @keyframes scan {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* ── Base ─────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: dark;
+  --bg: var(--color-void);
+  --panel: var(--color-panel);
+  --panel2: var(--color-panel-2);
+  --line: var(--color-line);
+  --txt: var(--color-fog);
+  --txt-dim: var(--color-dim);
+  --txt-faint: var(--color-faint);
+  --grid-dot: rgba(245, 245, 247, 0.055);
+  --glow: rgba(245, 245, 247, 0.04);
+}
+
+html.light {
+  color-scheme: light;
+  --bg: #f2f2f4;
+  --panel: #ffffff;
+  --panel2: #f7f7f8;
+  --line: #e3e3e8;
+  --txt: #101013;
+  --txt-dim: #5c5c66;
+  --txt-faint: #97979f;
+  --grid-dot: rgba(10, 10, 15, 0.07);
+  --glow: rgba(10, 10, 15, 0.03);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--txt);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior-y: none;
+}
+
+::selection {
+  background: var(--txt);
+  color: var(--bg);
+}
+
+/* Scrollbars — thin, monochrome */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* Focus visibility */
+:focus-visible {
+  outline: 1px solid var(--txt);
+  outline-offset: 2px;
+}
+
+input, textarea, select, button { font: inherit; color: inherit; }
+
+/* ── Utilities ────────────────────────────────────────────── */
+
+@utility text-dim { color: var(--txt-dim); }
+@utility text-faint { color: var(--txt-faint); }
+@utility bg-panel { background: var(--panel); }
+@utility bg-panel2 { background: var(--panel2); }
+@utility border-line { border-color: var(--line); }
+
+/* Signature dot-grid surface */
+@utility dot-grid {
+  background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+@utility dot-grid-sm {
+  background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px);
+  background-size: 12px 12px;
+}
+
+/* Hairline card */
+@utility card-surface {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+}
+
+/* Subtle top glow used on hero/panel hover */
+@utility glow-hover {
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+  &:hover {
+    border-color: color-mix(in srgb, var(--txt) 26%, var(--line));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--txt) 6%, transparent),
+      0 8px 40px var(--glow);
+  }
+}
+
+/* Monospace metadata */
+@utility meta {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--txt-faint);
+}
+
+/* Dashed technical divider */
+@utility divider-dashed {
+  border: 0;
+  border-top: 1px dashed var(--line);
+}
+
+/* Display type */
+@utility display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1.04;
+}
+
+@utility display-caps {
+  font-family: var(--font-display-caps);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+/* Persian / RTL text — elegant Persian-compatible face (Ndot57 cannot render it) */
+@utility font-fa {
+  font-family: "Vazirmatn", "Segoe UI", Tahoma, sans-serif;
+  letter-spacing: 0;
+  line-height: 1.9;
+}
+
+
+/* ── Reduced motion ───────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
