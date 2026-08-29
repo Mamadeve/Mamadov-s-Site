@@ -456,8 +456,8 @@ Keep contributions consistent with the project's architecture and visual languag
 │          MAMADO — BUILD LOG          │
 ├──────────────────────────────────────┤
 │ Human creativity    → Mamadov        │
-│ AI assistance       → Cline          │
-│ AI models           → Z.ai           │
+│ AI assistance       → cline router   │
+│ AI models           → GLM 5.3        │
 │ Documentation       → Internet       │
 │ Debugging           → Stack Overflow │
 │ Random ideas        → 3 AM           │
