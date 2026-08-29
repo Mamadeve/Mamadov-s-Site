@@ -7,29 +7,31 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-plugins: [react(), tailwindcss()],
+  base: "/Mamadov-s-Site/",
 
-server: {
-allowedHosts: true,
-},
+  plugins: [react(), tailwindcss()],
 
-resolve: {
-alias: {
-"@": path.resolve(__dirname, "src"),
-},
-},
+  server: {
+    allowedHosts: true,
+  },
 
-build: {
-target: "es2020",
-sourcemap: false,
-rollupOptions: {
-output: {
-manualChunks: {
-react: ["react", "react-dom", "react-router-dom"],
-supabase: ["@supabase/supabase-js"],
-motion: ["framer-motion"],
-},
-},
-},
-},
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "src"),
+    },
+  },
+
+  build: {
+    target: "es2020",
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom", "react-router-dom"],
+          supabase: ["@supabase/supabase-js"],
+          motion: ["framer-motion"],
+        },
+      },
+    },
+  },
 });
