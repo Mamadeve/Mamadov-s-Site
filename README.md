@@ -494,10 +494,11 @@ Please keep the project's visual language and architecture consistent when contr
 
 Add your preferred license here before publishing the repository.
 
-For example:
+🤖 Credits
 
 ```text
-MIT License
+┌──────────────────────────────────────┐ │ MAMADO — BUILD LOG │ ├──────────────────────────────────────┤ │ Human creativity → Mamadov │ │ AI assistance → Cline │ │ AI models → Z.ai │ │ Documentation → Internet │ │ Debugging → Stack Overflow │ │ Random ideas → 3 AM │ │ Sanity → ??? │ └──────────────────────────────────────┘ > built with AI > debugged by humans > powered by curiosity > shipped anyway (～￣▽￣)～
+
 ```
 
 ---
